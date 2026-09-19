@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Maqsadlarim">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Mening Maqsadlarim</title>
+<style>
+:root{--primary:#2563eb;--bg:#f3f6fb;--card:#fff;--text:#172033;--muted:#667085;--green:#16a34a;--red:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,#2563eb,#4f46e5);color:white;padding:32px 18px;text-align:center}
+header h1{margin:0 0 8px;font-size:32px} header p{margin:0;opacity:.9}
+.container{max-width:1100px;margin:25px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{background:var(--card);border-radius:18px;padding:22px;box-shadow:0 6px 20px #17203312}
+h2{margin-top:0;font-size:21px}
+input,button{width:100%;padding:13px;border-radius:10px;font-size:15px}
+input{border:1px solid #d0d5dd;margin:7px 0 12px}
+button{border:0;background:var(--primary);color:white;font-weight:bold;cursor:pointer;margin-top:5px}
+button:hover{opacity:.9}.secondary{background:#64748b}.danger{background:var(--red)}.success{background:var(--green)}
+.balance{font-size:34px;font-weight:bold;color:var(--green);margin:12px 0}
+.goal{position:relative}.goal h3{margin:0 0 8px;font-size:20px}
+.goal .price{font-weight:bold;font-size:18px}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:12px 0 6px}
+.progress{height:12px;background:#e5e7eb;border-radius:20px;overflow:hidden}
+.bar{height:100%;background:linear-gradient(90deg,#2563eb,#22c55e);width:0;transition:.3s}
+.goal-buttons{display:flex;gap:8px;margin-top:14px}.goal-buttons button{flex:1}
+.purchased{border:2px solid #22c55e;background:#f0fdf4}
+.empty{text-align:center;color:var(--muted);padding:30px}
+.badge{display:inline-block;padding:5px 9px;border-radius:20px;background:#dcfce7;color:#166534;font-size:12px;font-weight:bold}
+.notice{margin:18px 0;padding:16px;border-radius:12px;background:#fff7ed;color:#9a3412;display:none}
+footer{text-align:center;color:var(--muted);padding:30px}
+@media(max-width:500px){header h1{font-size:25px}.goal-buttons{flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Mening Maqsadlarim</h1>
+  <p>Orzularingni yoz, pul yig‘ va maqsadlaringga erish!</p>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <section class="card">
+      <h2>💰 Mening pulim</h2>
+      <div class="balance" id="balance">0 so‘m</div>
+      <label>Qo‘shiladigan pul miqdori</label>
+      <input id="moneyInput" type="number" min="0" placeholder="Masalan: 100000">
+      <button onclick="addMoney()">Pul qo‘shish</button>
+      <button class="secondary" onclick="removeMoney()">Pulni kamaytirish</button>
+      <p style="color:#667085;font-size:13px">Pul ma’lumotlari brauzeringda saqlanadi.</p>
+    </section>
+
+    <section class="card">
+      <h2>➕ Yangi maqsad</h2>
+      <label>Maqsad nomi</label>
+      <input id="goalName" type="text" placeholder="Masalan: Yangi noutbuk">
+      <label>Maqsad narxi (so‘m)</label>
+      <input id="goalPrice" type="number" min="1" placeholder="Masalan: 5000000">
+      <label>Mahsulot havolasi (ixtiyoriy)</label>
+      <input id="goalLink" type="url" placeholder="https://...">
+      <button onclick="addGoal()">Maqsad qo‘shish</button>
+      <p style="color:#667085;font-size:13px">Maqsadlar soniga limit yo‘q.</p>
+    </section>
+  </div>
+
+  <div id="notice" class="notice"></div>
+
+  <section class="card" style="margin-top:18px">
+    <h2>📋 Mening maqsadlarim</h2>
+    <div id="goals"></div>
+  </section>
+</div>
+
+<footer>Har bir kichik qadam — katta maqsad sari! 🚀</footer>
+
+<script>
+let balance = Number(localStorage.getItem("balance") || 0);
+let goals = JSON.parse(localStorage.getItem("goals") || "[]");
+
+function save(){
+  localStorage.setItem("balance", balance);
+  localStorage.setItem("goals", JSON.stringify(goals));
+}
+function money(n){return new Intl.NumberFormat("uz-UZ").format(Math.round(n))+" so‘m"}
+function render(){
+  document.getElementById("balance").textContent=money(balance);
+  const box=document.getElementById("goals");
+  if(!goals.length){box.innerHTML='<div class="empty">Hali maqsad qo‘shilmagan. Birinchi maqsadingni hozir qo‘sh! 🎯</div>';return}
+  box.innerHTML=goals.map((g,i)=>{
+    const percent=Math.min(100,Math.round(balance/g.price*100));
+    const remaining=Math.max(0,g.price-balance);
+    return `<div class="card goal ${g.purchased?'purchased':''}" style="margin-bottom:14px">
+      <h3>${escapeHtml(g.name)}</h3>
+      ${g.purchased?'<span class="badge">✅ Sotib olindi</span>':''}
+      <p class="price">${money(g.price)}</p>
+      ${g.link?`<p><a href="${escapeAttr(g.link)}" target="_blank" rel="noopener noreferrer">🔗 Mahsulot havolasini ochish</a></p>`:''}
+      <div class="meta"><span>Umumiy progress</span><b>${percent}%</b></div>
+      <div class="progress"><div class="bar" style="width:${percent}%"></div></div>
+      <p style="color:#667085;font-size:14px">${g.purchased?'Bu maqsadga erishding! 🎉':remaining===0?'Pul yetarli! Sotib olishing mumkin.':'Yana '+money(remaining)+' kerak.'}</p>
+      ${g.purchased?'':`<div class="goal-buttons"><button class="success" onclick="purchase(${i})">🛒 Sotib oldim</button><button class="danger" onclick="deleteGoal(${i})">O‘chirish</button></div>`}
+      ${g.purchased?`<button class="danger" onclick="deleteGoal(${i})">O‘chirish</button>`:''}
+    </div>`;
+  }).join("");
+}
+function showNotice(text){
+ const n=document.getElementById("notice");n.textContent=text;n.style.display="block";
+ setTimeout(()=>n.style.display="none",4500);
+}
+function addMoney(){
+ const value=Number(document.getElementById("moneyInput").value);
+ if(value<=0)return alert("Iltimos, to‘g‘ri summa kiriting.");
+ balance+=value;document.getElementById("moneyInput").value="";save();render();
+}
+function removeMoney(){
+ const value=Number(document.getElementById("moneyInput").value);
+ if(value<=0)return alert("Iltimos, to‘g‘ri summa kiriting.");
+ if(value>balance)return alert("Balansingizda buncha pul yo‘q.");
+ balance-=value;document.getElementById("moneyInput").value="";save();render();
+}
+function addGoal(){
+ const name=document.getElementById("goalName").value.trim();
+ const price=Number(document.getElementById("goalPrice").value);
+ const link=document.getElementById("goalLink").value.trim();
+ if(!name||price<=0)return alert("Maqsad nomi va narxini kiriting.");
+ goals.push({name,price,link,purchased:false});
+ document.getElementById("goalName").value="";document.getElementById("goalPrice").value="";document.getElementById("goalLink").value="";
+ save();render();showNotice("🎯 Yangi maqsadingiz qo‘shildi!");
+}
+function purchase(i){
+ const g=goals[i];
+ if(balance<g.price)return alert("Bu maqsad uchun hali pul yetarli emas.");
+ g.purchased=true;balance-=g.price;save();render();
+ showNotice("🎉 Tabriklaymiz! "+g.name+" maqsadingizga erishdingiz!");
+}
+function deleteGoal(i){
+ if(confirm("Bu maqsadni o‘chirmoqchimisiz?")){goals.splice(i,1);save();render();}
+}
+function escapeAttr(text){return text.replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#039;"}[c]));}
+function escapeHtml(text){
+ return text.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+render();
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
+</script>
+</body>
+</html>
